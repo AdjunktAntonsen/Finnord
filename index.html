@@ -160,7 +160,7 @@
     }
 
     function onPointerMove(e) {
-      if (!dragging || !selectedCells.length) return;
+      if (!dragging) return;
       const pt = e.touches ? e.touches[0] : e;
       const el = document.elementFromPoint(pt.clientX, pt.clientY);
       if (!el || !el.classList.contains('cell')) return;
@@ -170,23 +170,17 @@
       const [sr, sc] = start.split('-').map(Number);
       const dr = Math.sign(r1 - sr);
       const dc = Math.sign(c1 - sc);
-      if (dr === 0 && dc === 0) return;
-      if (!dragDir) {
-        if (directions.some(d => d.x === dc && d.y === dr)) {
-          dragDir = {x: dc, y: dr};
-        } else {
-          return;
-        }
-      }
-      if (dc !== dragDir.x || dr !== dragDir.y) return;
+      // Only allow the eight straight directions
+      if (!directions.some(d => d.x === dc && d.y === dr)) return;
+      // Build line from start to current
       const coords = [];
       let rr = sr;
       let cc = sc;
       while (true) {
         coords.push({r: rr, c: cc});
         if (rr === r1 && cc === c1) break;
-        rr += dragDir.y;
-        cc += dragDir.x;
+        rr += dr;
+        cc += dc;
       }
       clearSelection();
       coords.forEach(p => {
