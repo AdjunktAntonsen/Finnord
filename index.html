@@ -34,214 +34,106 @@
   <div id="wordList"></div>
   <div id="grid"></div>
   <script>
-    // Orddata
     const topWords = ["og","i","det","på","som","er","en","til","å","han","av","for","med","at","var","de","ikke","den","har","jeg","om","et","men","så","seg","hun","hadde","fra","vi","du","kan","da","ble","ut","skal","vil","ham","etter","over","ved","også","bare","eller","sa","nå","dette","noe","være","meg","mot","opp","der","når","inn","dem","kunne","andre","blir","alle","noen","sin","ha","år","henne","må","selv","sier","få","kom","denne","enn","to","hans","bli","ville","før","vært","skulle","går","her","slik","gikk","mer","hva","igjen","fikk","man","alt","mange","ingen","får","oss","hvor","under","siden","hele","dag","gang","sammen","ned","kommer","sine","deg","se","første","godt","mellom","måtte","gå","helt","litt","nok","store","aldri","ta","sig","uten","ho","kanskje","blitt","ser","hvis","bergen","sitt","jo","vel","si","vet","hennes","min","tre","ja","samme","mye","nye","tok","gjøre","disse","siste","tid","rundt","tilbake","mens","satt","flere","folk","fordi","både","la","gjennom","fått","like","nei","annet","komme","kroner","gjorde","hvordan","norge","norske","gjør","oslo","står","stor","gamle","langt","annen","sett","først","mener","hver","barn","rett","ny","tatt","derfor","fram","hos","heller","lenge","alltid","tror","nesten","mann","gi","god","lå","blant","norsk","gjort","visste","bak","tar","liv","mennesker","frem","bort"];
-    let words = [];
-    let grid = [];
-    let solutions = {};
-    let size = 0;
+    let words = [], grid = [], solutions = {}, size = 0;
     let isUpper = true;
-    let dragging = false;
-    let startCell = null;
-    let selectedCells = [];
-    let timerInterval = null;
-    let startTime = null;
-    const directions = [
-      {x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1},
-      {x:1,y:1},{x:1,y:-1},{x:-1,y:1},{x:-1,y:-1}
-    ];
+    let dragging = false, startCell = null, selectedCells = [];
+    let timerInterval = null, startTime = null;
+    const directions = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1},{x:1,y:1},{x:1,y:-1},{x:-1,y:1},{x:-1,y:-1}];
     const params = new URLSearchParams(window.location.search);
     const locked = params.has('locked');
     const preset = params.get('words');
 
-    function shuffle(arr) {
-      return arr.sort(() => Math.random() - 0.5);
-    }
-
-    function computeSize() {
-      const maxLen = Math.max(...words.map(w => w.length));
-      size = Math.max(maxLen + 2, words.length + 2, 8);
-    }
+    function shuffle(arr) { return arr.sort(() => Math.random() - 0.5); }
+    function computeSize() { const maxLen = Math.max(...words.map(w => w.length)); size = Math.max(maxLen + 2, words.length + 2, 8); }
 
     function init(input) {
-      if (preset) {
-        words = preset.split(',');
-      } else if (input) {
-        words = input.split(',').map(s => s.trim()).filter(Boolean);
-      } else {
-        words = shuffle(topWords).slice(0, 8);
-      }
+      if (preset) words = preset.split(',');
+      else if (input) words = input.split(',').map(s => s.trim()).filter(Boolean);
+      else words = shuffle(topWords).slice(0, 8);
       if (words.length === 0) words = shuffle(topWords).slice(0, 8);
       computeSize();
       const listEl = document.getElementById('wordList');
-      listEl.innerHTML = 'Finn disse ordene: ';
-      words.forEach((w, i) => {
-        const span = document.createElement('span');
-        span.id = 'word-' + w;
+      listEl.textContent = 'Finn disse ordene: ';
+      words.forEach((w,i) => {
+        const span = document.createElement('span'); span.id = 'word-'+w;
         span.textContent = isUpper ? w.toUpperCase() : w.toLowerCase();
         listEl.appendChild(span);
-        if (i < words.length - 1) listEl.appendChild(document.createTextNode(', '));
+        if (i < words.length-1) listEl.appendChild(document.createTextNode(', '));
       });
     }
 
     function placeWord(w) {
       const len = w.length;
-      for (let attempt = 0; attempt < 200; attempt++) {
-        const d = directions[Math.floor(Math.random() * directions.length)];
-        const r0 = Math.floor(Math.random() * size);
-        const c0 = Math.floor(Math.random() * size);
-        const r1 = r0 + d.y * (len - 1);
-        const c1 = c0 + d.x * (len - 1);
-        if (r1 < 0 || r1 >= size || c1 < 0 || c1 >= size) continue;
-        let conflict = false;
-        for (let j = 0; j < len; j++) {
-          const r = r0 + d.y * j;
-          const c = c0 + d.x * j;
-          if (grid[r][c] !== '.' && grid[r][c] !== w[j]) { conflict = true; break; }
-        }
-        if (conflict) continue;
-        const coords = [];
-        for (let j = 0; j < len; j++) {
-          const r = r0 + d.y * j;
-          const c = c0 + d.x * j;
-          grid[r][c] = w[j];
-          coords.push({r, c});
-        }
-        solutions[w] = coords;
-        return;
+      for (let a=0;a<200;a++){
+        const d = directions[Math.floor(Math.random()*8)];
+        const r0 = Math.floor(Math.random()*size), c0 = Math.floor(Math.random()*size);
+        const r1 = r0 + d.y*(len-1), c1 = c0 + d.x*(len-1);
+        if (r1<0||r1>=size||c1<0||c1>=size) continue;
+        let ok=true;
+        for (let j=0;j<len;j++){ const r=r0+d.y*j, c=c0+d.x*j; if (grid[r][c]!=='.'&&grid[r][c]!==w[j]){ok=false;break;} }
+        if (!ok) continue;
+        const coords=[];
+        for (let j=0;j<len;j++){ const r=r0+d.y*j, c=c0+d.x*j; grid[r][c]=w[j]; coords.push({r,c}); }
+        solutions[w]=coords; return;
       }
     }
 
-    function generate() {
+    function generate(){
       clearInterval(timerInterval);
-      grid = Array.from({length: size}, () => Array(size).fill('.'));
-      solutions = {};
-      words.forEach(placeWord);
-      for (let r = 0; r < size; r++) {
-        for (let c = 0; c < size; c++) {
-          if (grid[r][c] === '.') grid[r][c] = String.fromCharCode(97 + Math.floor(Math.random() * 26));
-        }
-      }
+      grid=Array.from({length:size},()=>Array(size).fill('.'));
+      solutions={}; words.forEach(placeWord);
+      for(let r=0;r<size;r++) for(let c=0;c<size;c++) if(grid[r][c]==='.'){grid[r][c]=String.fromCharCode(97+Math.floor(Math.random()*26));}
       render(false);
-      if (locked) { startTimer(); hideControls(); }
+      if(locked){startTimer(); hideControls();}
     }
 
-    function render(show) {
-      const gridEl = document.getElementById('grid');
-      gridEl.style.gridTemplateColumns = `repeat(${size},30px)`;
-      gridEl.style.gridTemplateRows = gridEl.style.gridTemplateColumns;
-      gridEl.innerHTML = '';
-      for (let r = 0; r < size; r++) {
-        for (let c = 0; c < size; c++) {
-          const cell = document.createElement('div');
-          cell.className = 'cell';
-          cell.dataset.r = r;
-          cell.dataset.c = c;
-          cell.textContent = isUpper ? grid[r][c].toUpperCase() : grid[r][c].toLowerCase();
-          gridEl.appendChild(cell);
-        }
-      }
-      if (show) {
-        words.forEach(w => {
-          (solutions[w]||[]).forEach(p => {
-            const el = document.querySelector(`.cell[data-r='${p.r}'][data-c='${p.c}']`);
-            if (el) el.classList.add('solution');
-          });
-          document.getElementById('word-'+w).classList.add('solution');
-        });
-      }
+    function render(show){
+      const G=document.getElementById('grid');
+      G.style.gridTemplateColumns=`repeat(${size},30px)`;
+      G.style.gridTemplateRows=G.style.gridTemplateColumns;
+      G.innerHTML='';
+      for(let r=0;r<size;r++)for(let c=0;c<size;c++){const cell=document.createElement('div');cell.className='cell';cell.dataset.r=r;cell.dataset.c=c;cell.textContent=isUpper?grid[r][c].toUpperCase():grid[r][c].toLowerCase();G.appendChild(cell);}      
+      if(show) words.forEach(w=>{(solutions[w]||[]).forEach(p=>{const e=document.querySelector(`.cell[data-r='${p.r}'][data-c='${p.c}']`);e&&e.classList.add('solution');});document.getElementById('word-'+w).classList.add('solution');});
     }
 
-    function clearSelection() {
-      document.querySelectorAll('.cell.selected').forEach(el => el.classList.remove('selected'));
-      selectedCells = [];
-    }
+    function clearSelection(){document.querySelectorAll('.cell.selected').forEach(e=>e.classList.remove('selected')); selectedCells=[];}
 
-    document.getElementById('grid').addEventListener('pointerdown', e => {
-      dragging = true; clearSelection(); startCell = e.target.closest('.cell') ? {
-        r: +e.target.dataset.r, c: +e.target.dataset.c
-      } : null;
-      if (startCell) {
-        selectedCells = [`${startCell.r}-${startCell.c}`];
-        e.target.classList.add('selected');
-      }
+    document.getElementById('grid').addEventListener('pointerdown',e=>{
+      dragging=true; clearSelection(); const el=e.target.closest('.cell');
+      if(el){ startCell={r:+el.dataset.r,c:+el.dataset.c}; selectedCells=[`${startCell.r}-${startCell.c}`]; el.classList.add('selected'); }
     });
 
-    document.getElementById('grid').addEventListener('pointermove', e => {
-      if (!dragging || !startCell) return;
-      const pt = e.touches ? e.touches[0] : e;
-      const cell = document.elementFromPoint(pt.clientX, pt.clientY);
-      if (!cell || !cell.classList.contains('cell')) return;
-      const r1 = +cell.dataset.r, c1 = +cell.dataset.c;
-      const dr = Math.sign(r1 - startCell.r), dc = Math.sign(c1 - startCell.c);
-      for (let rr = startCell.r, cc = startCell.c, path = []; ; rr += dr, cc += dc) {
-        path.push({r: rr, c: cc});
-        if (rr === r1 && cc === c1) break;
-      }
-      clearSelection();
-      path.forEach(p => {
-        const el = document.querySelector(`.cell[data-r='${p.r}'][data-c='${p.c}']`);
-        if (el) el.classList.add('selected');
-      });
-      selectedCells = path.map(p => `${p.r}-${p.c}`);
+    document.getElementById('grid').addEventListener('pointermove',e=>{
+      if(!dragging||!startCell) return;
+      const pt=e.touches?e.touches[0]:e;
+      const el=document.elementFromPoint(pt.clientX,pt.clientY);
+      if(!el||!el.classList.contains('cell')) return;
+      const r1=+el.dataset.r,c1=+el.dataset.c;
+      const dr=Math.sign(r1-startCell.r),dc=Math.sign(c1-startCell.c);
+      if(!directions.some(d=>d.x===dc&&d.y===dr)) return;
+      const path=[]; let rr=startCell.r,cc=startCell.c;
+      while(true){ path.push({r:rr,c:cc}); if(rr===r1&&cc===c1) break; rr+=dr;cc+=dc; }
+      clearSelection(); path.forEach(p=>{const ce=document.querySelector(`.cell[data-r='${p.r}'][data-c='${p.c}']`);ce&&ce.classList.add('selected');});
+      selectedCells=path.map(p=>`${p.r}-${p.c}`);
     });
 
-    document.addEventListener('pointerup', () => {
-      dragging = false;
-      let found = 0;
-      words.forEach(w => {
-        const sol = solutions[w] || [];
-        if (sol.length === selectedCells.length && sol.every((p,i) => `${p.r}-${p.c}` === selectedCells[i])) {
-          sol.forEach(p => {
-            const el = document.querySelector(`.cell[data-r='${p.r}'][data-c='${p.c}']`);
-            if (el) el.classList.replace('selected','correct');
-          });
-          document.getElementById('word-'+w).classList.add('correct');
-          found++;
-        }
-      });
-      if (locked && found === words.length) {
-        clearInterval(timerInterval);
-        setTimeout(() => {
-          if (confirm('Bra jobba! Vil du prøve igjen?')) { init(); generate(); }
-        }, 0);
-      }
+    document.addEventListener('pointerup',()=>{
+      dragging=false; let found=0;
+      words.forEach(w=>{const sol=solutions[w]||[]; if(sol.length===selectedCells.length&&sol.every((p,i)=>`${p.r}-${p.c}`===selectedCells[i])){sol.forEach(p=>{const ce=document.querySelector(`.cell[data-r='${p.r}'][data-c='${p.c}']`);ce&&ce.classList.replace('selected','correct');});document.getElementById('word-'+w).classList.add('correct');found++;}});
+      if(locked&&found===words.length){ clearInterval(timerInterval); setTimeout(()=>{if(confirm('Bra jobba! Vil du prøve igjen?')){init();generate();}},0); }
     });
 
-    function hideControls() {
-      ['wordInput','useWordsBtn','shareLockedBtn'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = 'none';
-      });
-    }
-    function startTimer() {
-      startTime = Date.now();
-      timerInterval = setInterval(() => {
-        const d = Date.now() - startTime;
-        const m = Math.floor(d/60000);
-        const s = Math.floor(d/1000)%60;
-        document.getElementById('timer').textContent = `Tid: ${m}:${String(s).padStart(2,'0')}`;
-      }, 1000);
-    }
+    function hideControls(){['wordInput','useWordsBtn','shareLockedBtn'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='none';});}
+    function startTimer(){startTime=Date.now();timerInterval=setInterval(()=>{const d=Date.now()-startTime,m=Math.floor(d/60000),s=Math.floor(d/1000)%60;document.getElementById('timer').textContent=`Tid: ${m}:${String(s).padStart(2,'0')}`;},1000);}    
 
-    document.getElementById('shareLockedBtn').onclick = () => {
-      const base = location.origin + location.pathname;
-      const url = `${base}?locked=1&words=${encodeURIComponent(words.join(','))}`;
-      prompt('Del denne lenken:', url);
-    };
-    document.getElementById('useWordsBtn').onclick = () => { init(document.getElementById('wordInput').value); generate(); };
-    document.getElementById('showSolutionBtn').onclick = () => render(true);
-    document.getElementById('toggleCaseBtn').onclick = () => {
-      isUpper = !isUpper;
-      render(false);
-      document.querySelectorAll('#wordList span').forEach(sp => {
-        const w = sp.id.slice(5);
-        sp.textContent = isUpper ? w.toUpperCase() : w.toLowerCase();
-      });
-    };
-    document.getElementById('newGameBtn').onclick = () => { init(); generate(); };
+    document.getElementById('shareLockedBtn').onclick=()=>{const base=location.origin+location.pathname;prompt('Del denne lenken:',`${base}?locked=1&words=${encodeURIComponent(words.join(','))}`);};
+    document.getElementById('useWordsBtn').onclick=()=>{init(document.getElementById('wordInput').value);generate();};
+    document.getElementById('showSolutionBtn').onclick=()=>render(true);
+    document.getElementById('toggleCaseBtn').onclick=()=>{isUpper=!isUpper;render(false);document.querySelectorAll('#wordList span').forEach(sp=>{const w=sp.id.slice(5);sp.textContent=isUpper?w.toUpperCase():w.toLowerCase();});};
+    document.getElementById('newGameBtn').onclick=()=>{init();generate();};
 
-    init(); generate();
+    init();generate();
   </script>
 </body>
 </html>
