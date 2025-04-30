@@ -32,20 +32,16 @@
   <div id="wordList"></div>
   <div id="grid"></div>
   <script>
-    // Retningsvektorer for plassering og markering
+    // Definer retningsvektorer
     const directions = [
-      { x: 0, y: 1 },   // ned
-      { x: 1, y: 0 },   // høyre
-      { x: 0, y: -1 },  // opp
-      { x: -1, y: 0 },  // venstre
-      { x: 1, y: 1 },   // ned-høyre
-      { x: -1, y: -1 }, // opp-venstre
-      { x: -1, y: 1 },  // ned-venstre
-      { x: 1, y: -1 }   // opp-høyre
+      { x: 0, y: 1 }, { x: 1, y: 0 }, { x: 0, y: -1 }, { x: -1, y: 0 },
+      { x: 1, y: 1 }, { x: -1, y: -1 }, { x: -1, y: 1 }, { x: 1, y: -1 }
     ];
-    const topWords = [/* ... 200 ord ... */];  // forkortet for klarhet
+    // Høyfrekvente norske ord
+    const topWords = ["og","i","det","på","som","er","en","til","å","han","av","for","med","at","var","de","ikke","den","har","jeg","om","et","men","så","seg","hun","hadde","fra","vi","du","kan","da","ble","ut","skal","vil","ham","etter","over","ved","også","bare","eller","sa","nå","dette","noe","være","meg","mot","opp","der","når","inn","dem","kunne","andre","blir","alle","noen","sin","ha","år","henne","må","selv","sier","få","kom","denne","enn","to","hans","bli","ville","før","vært","skulle","går","her","slik","gikk","mer","hva","igjen","fikk","man","alt","mange","ingen","får","oss","hvor","under","siden","hele","dag","gang","sammen","ned","kommer","sine","deg","se","første","godt","mellom","måtte","gå","helt","litt","nok","store","aldri","ta","sig","uten","ho","kanskje","blitt","ser","hvis","bergen","sitt","jo","vel","si","vet","hennes","min","tre","ja","samme","mye","nye","tok","gjøre","disse","siste","tid","rundt","tilbake","mens","satt","flere","folk","fordi","både","la","gjennom","fått","like","nei","annet","komme","kroner","gjorde","hvordan","norge","norske","gjør","oslo","står","stor","gamle","langt","annen","sett","først","mener","hver","barn","rett","ny","tatt","derfor","fram","hos","heller","lenge","alltid","tror","nesten","mann","gi","god","lå","blant","norsk","gjort","visste","bak","tar","liv","mennesker","frem","bort"];
     let words = [], grid = [], solutions = {}, size = 0;
-    let isUpper = true, dragging = false, startCell = null, selectedCells = [];
+    let isUpper = true;
+    let dragging = false, startCell = null, selectedCells = [];
 
     function shuffle(arr) { return arr.sort(() => Math.random() - 0.5); }
     function computeSize() {
@@ -70,7 +66,7 @@
 
     function placeWord(w) {
       const len = w.length;
-      for (let attempt = 0; attempt < 200; attempt++) {
+      for (let i = 0; i < 200; i++) {
         const d = directions[Math.floor(Math.random() * directions.length)];
         const r0 = Math.floor(Math.random() * size);
         const c0 = Math.floor(Math.random() * size);
@@ -79,13 +75,15 @@
         if (r1 < 0 || r1 >= size || c1 < 0 || c1 >= size) continue;
         let conflict = false;
         for (let j = 0; j < len; j++) {
-          const rr = r0 + d.y * j, cc = c0 + d.x * j;
+          const rr = r0 + d.y * j;
+          const cc = c0 + d.x * j;
           if (grid[rr][cc] !== '.' && grid[rr][cc] !== w[j]) { conflict = true; break; }
         }
         if (conflict) continue;
         const coords = [];
         for (let j = 0; j < len; j++) {
-          const rr = r0 + d.y * j, cc = c0 + d.x * j;
+          const rr = r0 + d.y * j;
+          const cc = c0 + d.x * j;
           grid[rr][cc] = w[j];
           coords.push({ r: rr, c: cc });
         }
@@ -108,16 +106,17 @@
 
     function render(show) {
       const gridEl = document.getElementById('grid');
-      gridEl.style.gridTemplateColumns = `repeat(${size}, 30px)`;
+      gridEl.style.gridTemplateColumns = `repeat(${size},30px)`;
       gridEl.style.gridTemplateRows = gridEl.style.gridTemplateColumns;
       gridEl.innerHTML = '';
       for (let r = 0; r < size; r++) {
         for (let c = 0; c < size; c++) {
-          const cell = document.createElement('div');
-          cell.className = 'cell';
-          cell.dataset.r = r; cell.dataset.c = c;
-          cell.textContent = isUpper ? grid[r][c].toUpperCase() : grid[r][c].toLowerCase();
-          gridEl.appendChild(cell);
+          const ce = document.createElement('div');
+          ce.className = 'cell';
+          ce.dataset.r = r;
+          ce.dataset.c = c;
+          ce.textContent = isUpper ? grid[r][c].toUpperCase() : grid[r][c].toLowerCase();
+          gridEl.appendChild(ce);
         }
       }
       if (show) {
@@ -126,8 +125,7 @@
             const el = document.querySelector(`.cell[data-r='${p.r}'][data-c='${p.c}']`);
             if (el) el.classList.add('solution');
           });
-          const span = document.getElementById('word-' + w);
-          if (span) span.classList.add('solution');
+          document.getElementById('word-' + w).classList.add('solution');
         });
       }
     }
@@ -137,13 +135,27 @@
       selectedCells = [];
     }
 
-    // Markering av ord
+    function checkSelection() {
+      words.forEach(w => {
+        const sol = solutions[w] || [];
+        if (sol.length === selectedCells.length && sol.every((p, i) => `${p.r}-${p.c}` === selectedCells[i])) {
+          sol.forEach(p => {
+            const el = document.querySelector(`.cell[data-r='${p.r}'][data-c='${p.c}']`);
+            if (el) el.classList.replace('selected', 'correct');
+          });
+          document.getElementById('word-' + w).classList.add('correct');
+        }
+      });
+    }
+
     const gridEl = document.getElementById('grid');
     gridEl.addEventListener('pointerdown', e => {
-      const cell = e.target.closest('.cell'); if (!cell) return;
-      dragging = true; startCell = { r: +cell.dataset.r, c: +cell.dataset.c };
-      clearSelection(); selectedCells = [`${startCell.r}-${startCell.c}`];
-      cell.classList.add('selected');
+      const ce = e.target.closest('.cell'); if (!ce) return;
+      dragging = true;
+      startCell = { r: +ce.dataset.r, c: +ce.dataset.c };
+      clearSelection();
+      selectedCells = [`${startCell.r}-${startCell.c}`];
+      ce.classList.add('selected');
     });
     document.addEventListener('pointermove', e => {
       if (!dragging || !startCell) return;
@@ -152,16 +164,19 @@
       if (!el || !el.classList.contains('cell')) return;
       const r1 = +el.dataset.r, c1 = +el.dataset.c;
       const dr = Math.sign(r1 - startCell.r), dc = Math.sign(c1 - startCell.c);
-      const path = []; let rr = startCell.r, cc = startCell.c;
+      const path = [];
+      let rr = startCell.r, cc = startCell.c;
       while (rr !== r1 || cc !== c1) { path.push({ r: rr, c: cc }); rr += dr; cc += dc; }
       path.push({ r: rr, c: cc });
-      clearSelection(); path.forEach(p => {
-        const ce = document.querySelector(`.cell[data-r='${p.r}'][data-c='${p.c}']`);
-        if (ce) ce.classList.add('selected');
+      clearSelection();
+      path.forEach(p => {
+        const ce2 = document.querySelector(`.cell[data-r='${p.r}'][data-c='${p.c}']`);
+        if (ce2) ce2.classList.add('selected');
       });
       selectedCells = path.map(p => `${p.r}-${p.c}`);
     });
-    document.addEventListener('pointerup', () => { dragging = false; });
+    document.addEventListener('pointerup', e => { dragging = false; checkSelection(); });
+    document.addEventListener('pointercancel', () => { dragging = false; });
 
     // Knapper
     document.getElementById('useWordsBtn').onclick = () => { init(document.getElementById('wordInput').value); generate(); };
@@ -174,7 +189,7 @@
       prompt('Del denne lenken:', url);
     };
 
-    // Start spill
+    // Start spillet
     init();
     generate();
   </script>
